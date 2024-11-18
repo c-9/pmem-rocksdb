@@ -866,7 +866,7 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
 
     if (write_stall_condition == WriteStallCondition::kStopped &&
         write_stall_cause == WriteStallCause::kMemtableLimit) {
-      std::cout<<"write stop by memtable\n";
+      // std::cout<<"write stop by memtable\n";
       write_controller_token_ = write_controller->GetStopToken();
       internal_stats_->AddCFStats(InternalStats::MEMTABLE_LIMIT_STOPS, 1);
       ROCKS_LOG_WARN(
@@ -877,7 +877,7 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
           mutable_cf_options.max_write_buffer_number);
     } else if (write_stall_condition == WriteStallCondition::kStopped &&
                write_stall_cause == WriteStallCause::kL0FileCountLimit) {
-      std::cout<<"write stop by l0\n";
+      // std::cout<<"write stop by l0\n";
       write_controller_token_ = write_controller->GetStopToken();
       internal_stats_->AddCFStats(InternalStats::L0_FILE_COUNT_LIMIT_STOPS, 1);
       if (compaction_picker_->IsLevel0CompactionInProgress()) {
@@ -889,7 +889,7 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
                      name_.c_str(), vstorage->l0_delay_trigger_count());
     } else if (write_stall_condition == WriteStallCondition::kStopped &&
                write_stall_cause == WriteStallCause::kPendingCompactionBytes) {
-      std::cout<<"write stop by compaction bytes\n";
+      // std::cout<<"write stop by compaction bytes\n";
       write_controller_token_ = write_controller->GetStopToken();
       internal_stats_->AddCFStats(
           InternalStats::PENDING_COMPACTION_BYTES_LIMIT_STOPS, 1);
