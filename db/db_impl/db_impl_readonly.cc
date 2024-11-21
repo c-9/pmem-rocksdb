@@ -2,7 +2,7 @@
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-
+#include <iostream>
 #include "db/db_impl/db_impl_readonly.h"
 #include "db/arena_wrapped_db_iter.h"
 
@@ -11,6 +11,7 @@
 #include "db/db_iter.h"
 #include "db/merge_context.h"
 #include "monitoring/perf_context_imp.h"
+#include "dcpmm/kvs_dcpmm.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -61,6 +62,18 @@ Status DBImplReadOnly::Get(const ReadOptions& read_options,
     RecordTick(stats_, MEMTABLE_MISS);
   }
   RecordTick(stats_, NUMBER_KEYS_READ);
+  std::cerr << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!" << int(s.code()) << std::endl;
+  #ifdef ON_DCPMM
+    if (s.ok()){
+    // if (s.ok() && KVSEnabled()){
+      std::cerr << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB!" << std::endl;
+      KVSDecodeValueRef(pinnable_val->data(), pinnable_val->size(), pinnable_val->GetSelf());
+      if (pinnable_val->IsPinned()){
+        pinnable_val->Reset();
+      }
+      pinnable_val->PinSelf();
+    }
+  #endif
   size_t size = pinnable_val->size();
   RecordTick(stats_, BYTES_READ, size);
   RecordInHistogram(stats_, BYTES_PER_READ, size);

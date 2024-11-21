@@ -619,6 +619,7 @@ ReadOptions::ReadOptions(bool cksum, bool cache)
       readahead_size(0),
       max_skippable_internal_keys(0),
       read_tier(kReadAllTier),
+      skip_memtable(false),
       verify_checksums(cksum),
       fill_cache(cache),
       tailing(false),

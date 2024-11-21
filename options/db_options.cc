@@ -385,6 +385,32 @@ std::unordered_map<std::string, OptionTypeInfo>
             }
             return s;
           }}},
+        #ifdef ON_DCPMM
+        {"allow_dcpmm_writes",
+         {offsetof(struct DBOptions, allow_dcpmm_writes), OptionType::kBoolean,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"recycle_dcpmm_sst",
+         {offsetof(struct DBOptions, recycle_dcpmm_sst), OptionType::kBoolean,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"dcpmm_kvs_enable",
+         {offsetof(struct DBOptions, dcpmm_kvs_enable), OptionType::kBoolean,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"dcpmm_kvs_level",
+         {offsetof(struct DBOptions, dcpmm_kvs_level), OptionType::kInt,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"dcpmm_kvs_mmapped_file_fullpath",
+         {offsetof(struct DBOptions, dcpmm_kvs_mmapped_file_fullpath), OptionType::kString,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"dcpmm_kvs_mmapped_file_size",
+         {offsetof(struct DBOptions, dcpmm_kvs_mmapped_file_size), OptionType::kSizeT,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"dcpmm_kvs_value_thres",
+         {offsetof(struct DBOptions, dcpmm_kvs_value_thres), OptionType::kSizeT,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+        {"dcpmm_compress_value",
+         {offsetof(struct DBOptions, dcpmm_compress_value), OptionType::kBoolean,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone, 0}},
+      #endif 
 };
 #endif  // ROCKSDB_LITE
 
@@ -631,6 +657,24 @@ void ImmutableDBOptions::Dump(Logger* log) const {
                                              : kUnknownFileChecksumFuncName);
   ROCKS_LOG_HEADER(log, "                Options.best_efforts_recovery: %d",
                    static_cast<int>(best_efforts_recovery));
+  #ifdef ON_DCPMM
+  ROCKS_LOG_HEADER(log, "              Options.allow_dcpmm_writes: %d",
+                   allow_dcpmm_writes);
+  ROCKS_LOG_HEADER(log, "               Options.recycle_dcpmm_sst: %d",
+                   recycle_dcpmm_sst);
+  ROCKS_LOG_HEADER(log, "                Options.dcpmm_kvs_enable: %d",
+                   dcpmm_kvs_enable);
+  ROCKS_LOG_HEADER(log, "                 Options.dcpmm_kvs_level: %d",
+                   dcpmm_kvs_level);
+  ROCKS_LOG_HEADER(log, " Options.dcpmm_kvs_mmapped_file_fullpath: %s",
+                   dcpmm_kvs_mmapped_file_fullpath.c_str());
+  ROCKS_LOG_HEADER(log, "     Options.dcpmm_kvs_mmapped_file_size: %d",
+                   dcpmm_kvs_mmapped_file_size);
+  ROCKS_LOG_HEADER(log, "           Options.dcpmm_kvs_value_thres: %d",
+                   dcpmm_kvs_value_thres);
+  ROCKS_LOG_HEADER(log, "            Options.dcpmm_compress_value: %d",
+                   dcpmm_compress_value);
+  #endif 
 }
 
 MutableDBOptions::MutableDBOptions()
