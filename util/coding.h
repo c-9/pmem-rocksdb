@@ -311,13 +311,21 @@ inline void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {
 }
 
 #ifdef ON_DCPMM
-inline void PutLengthHdrPrefixedSlice(std::string* dst, struct KVSHdr* hdr,
-                                      const Slice& value) {
-  // PutVarint32(dst, static_cast<uint32_t>(value.size() + sizeof(KVSHdr)));
-  PutVarint32(dst, static_cast<uint32_t>(value.size() + 1));
-  // dst->append((char*)hdr, sizeof(*hdr));
-  dst->append((char*)hdr, 1);
-  dst->append(value.data(), value.size());
+inline void PutKVSSlice(std::string* dst, const Slice& value) {
+  if(KVSEnabled()){
+    bool compress = KVSGetCompressKnob();
+    struct KVSRef ref;
+    if(value.size() >= KVSGetKVSValueThres() && KVSEncodeValue(value, compress, &ref)){
+      PutLengthPrefixedSlice(dst, Slice((char*)(&ref), sizeof(ref)));
+    } else {
+      ref.hdr.encoding = kEncodingRawUncompressed;
+      PutVarint32(dst, static_cast<uint32_t>(value.size() + 1));
+      dst->append((char*)(&ref.hdr), 1);
+      dst->append(value.data(), value.size());
+    }
+  } else {
+      PutLengthPrefixedSlice(dst, value);
+  }
 }
 #endif
 
@@ -342,6 +350,40 @@ inline void PutLengthPrefixedSlicePartsWithPadding(
   PutLengthPrefixedSliceParts(dst, /*total_bytes=*/pad_sz, slice_parts);
   dst->append(pad_sz, '\0');
 }
+
+#ifdef ON_DCPMM
+inline void PutKVSSliceParts(std::string* dst, size_t total_bytes,
+                              const SliceParts& slice_parts) {
+  std::string s;
+  for (int i = 0; i < slice_parts.num_parts; ++i) {
+    s.append(slice_parts.parts[i].data(), slice_parts.parts[i].size());
+  }
+  Slice value(s);
+  PutKVSSlice(dst, value);
+}
+
+inline void PutKVSSliceParts(std::string* dst,
+                              const SliceParts& slice_parts) {
+  PutKVSSliceParts(dst, /*total_bytes=*/0, slice_parts);
+}
+
+// inline void PutKVSSlicePartsWithPadding(
+//     std::string* dst, const SliceParts& slice_parts, size_t pad_sz) {
+//   PutKVSSliceParts(dst, /*total_bytes=*/pad_sz, slice_parts);
+//   dst->append(pad_sz, '\0');
+// }
+
+inline void PutKVSSlicePartsWithPadding(
+    std::string* dst, const SliceParts& slice_parts, size_t pad_sz) {
+  std::string s;
+  for (int i = 0; i < slice_parts.num_parts; ++i) {
+    s.append(slice_parts.parts[i].data(), slice_parts.parts[i].size());
+  }
+  s.append(pad_sz, '\0');
+  Slice value(s);
+  PutKVSSlice(dst, value);
+}
+#endif
 
 inline int VarintLength(uint64_t v) {
   int len = 1;

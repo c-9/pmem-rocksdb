@@ -781,22 +781,10 @@ Status WriteBatchInternal::Put(WriteBatch* b, uint32_t column_family_id,
   }
 
 #ifdef ON_DCPMM
-  static bool kvs_enabled = KVSEnabled();
-  static size_t thresh = KVSGetKVSValueThres();
-  if(kvs_enabled){
-    bool compress = KVSGetCompressKnob();
-    struct KVSRef ref;
-    if(value.size()>=thresh && KVSEncodeValue(value, compress, &ref)){
-      PutLengthPrefixedSlice(&b->rep_, Slice((char*)(&ref), sizeof(ref)));
-    } else {
-      ref.hdr.encoding = kEncodingRawUncompressed;
-      PutLengthHdrPrefixedSlice(&b->rep_, &(ref.hdr), value);
-    }
-  } else
+  PutKVSSlice(&b->rep_, value);
+#else
+  PutLengthPrefixedSlice(&b->rep_, value);
 #endif
-{
-    PutLengthPrefixedSlice(&b->rep_, value);
-}
 
   b->content_flags_.store(
       b->content_flags_.load(std::memory_order_relaxed) | ContentFlags::HAS_PUT,
@@ -850,7 +838,11 @@ Status WriteBatchInternal::Put(WriteBatch* b, uint32_t column_family_id,
   } else {
     PutLengthPrefixedSlicePartsWithPadding(&b->rep_, key, b->timestamp_size_);
   }
+#ifdef ON_DCPMM
+  PutKVSSliceParts(&b->rep_, value);
+#else
   PutLengthPrefixedSliceParts(&b->rep_, value);
+#endif
   b->content_flags_.store(
       b->content_flags_.load(std::memory_order_relaxed) | ContentFlags::HAS_PUT,
       std::memory_order_relaxed);
@@ -1091,7 +1083,12 @@ Status WriteBatchInternal::Merge(WriteBatch* b, uint32_t column_family_id,
     PutVarint32(&b->rep_, column_family_id);
   }
   PutLengthPrefixedSlice(&b->rep_, key);
+  // PutLengthPrefixedSlice(&b->rep_, value);
+#ifdef ON_DCPMM
+  PutKVSSlice(&b->rep_, value);
+#else
   PutLengthPrefixedSlice(&b->rep_, value);
+#endif
   b->content_flags_.store(b->content_flags_.load(std::memory_order_relaxed) |
                               ContentFlags::HAS_MERGE,
                           std::memory_order_relaxed);
@@ -1121,7 +1118,12 @@ Status WriteBatchInternal::Merge(WriteBatch* b, uint32_t column_family_id,
     PutVarint32(&b->rep_, column_family_id);
   }
   PutLengthPrefixedSliceParts(&b->rep_, key);
+  // PutLengthPrefixedSliceParts(&b->rep_, value);
+#ifdef ON_DCPMM
+  PutKVSSliceParts(&b->rep_, value);
+#else
   PutLengthPrefixedSliceParts(&b->rep_, value);
+#endif
   b->content_flags_.store(b->content_flags_.load(std::memory_order_relaxed) |
                               ContentFlags::HAS_MERGE,
                           std::memory_order_relaxed);
@@ -1146,7 +1148,12 @@ Status WriteBatchInternal::PutBlobIndex(WriteBatch* b,
     PutVarint32(&b->rep_, column_family_id);
   }
   PutLengthPrefixedSlice(&b->rep_, key);
+  // PutLengthPrefixedSlice(&b->rep_, value);
+#ifdef ON_DCPMM
+  PutKVSSlice(&b->rep_, value);
+#else
   PutLengthPrefixedSlice(&b->rep_, value);
+#endif
   b->content_flags_.store(b->content_flags_.load(std::memory_order_relaxed) |
                               ContentFlags::HAS_BLOB_INDEX,
                           std::memory_order_relaxed);

@@ -1453,17 +1453,19 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
   }
 
 #ifdef ON_DCPMM
-  if (impl->immutable_db_options_.dcpmm_kvs_enable && impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath!="") {
-    int err = KVSOpen(
-        impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath.data(),
-        impl->immutable_db_options_.dcpmm_kvs_mmapped_file_size);
-    if (err != 0) {
-      return Status::IOError(std::string("failed to open '")
-        .append(impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath)
-        .append("'"));
+  if (s.ok()) {
+    if (impl->immutable_db_options_.dcpmm_kvs_enable && impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath!="") {
+      int err = KVSOpen(
+          impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath.data(),
+          impl->immutable_db_options_.dcpmm_kvs_mmapped_file_size);
+      if (err != 0) {
+        return Status::IOError(std::string("failed to open '")
+          .append(impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath)
+          .append("'"));
+      }
+      KVSSetKVSValueThres(impl->immutable_db_options_.dcpmm_kvs_value_thres);
+      KVSSetCompressKnob(impl->immutable_db_options_.dcpmm_compress_value);
     }
-    KVSSetKVSValueThres(impl->immutable_db_options_.dcpmm_kvs_value_thres);
-    KVSSetCompressKnob(impl->immutable_db_options_.dcpmm_compress_value);
   }
 #endif
 

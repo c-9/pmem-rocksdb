@@ -2,7 +2,6 @@
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-#include <iostream>
 #include "db/db_impl/db_impl_readonly.h"
 #include "db/arena_wrapped_db_iter.h"
 
@@ -62,11 +61,8 @@ Status DBImplReadOnly::Get(const ReadOptions& read_options,
     RecordTick(stats_, MEMTABLE_MISS);
   }
   RecordTick(stats_, NUMBER_KEYS_READ);
-  std::cerr << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!" << int(s.code()) << std::endl;
   #ifdef ON_DCPMM
-    if (s.ok()){
-    // if (s.ok() && KVSEnabled()){
-      std::cerr << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB!" << std::endl;
+    if (s.ok() && KVSEnabled()){
       KVSDecodeValueRef(pinnable_val->data(), pinnable_val->size(), pinnable_val->GetSelf());
       if (pinnable_val->IsPinned()){
         pinnable_val->Reset();
@@ -243,6 +239,22 @@ Status DBImplReadOnly::OpenForReadOnlyWithoutCheck(
       cfd->InstallSuperVersion(&sv_context, &impl->mutex_);
     }
   }
+#ifdef ON_DCPMM
+  if (s.ok()) {
+  if (impl->immutable_db_options_.dcpmm_kvs_enable && impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath!="") {
+    int err = KVSOpen(
+        impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath.data(),
+        impl->immutable_db_options_.dcpmm_kvs_mmapped_file_size);
+    if (err != 0) {
+      return Status::IOError(std::string("failed to open '")
+        .append(impl->immutable_db_options_.dcpmm_kvs_mmapped_file_fullpath)
+        .append("'"));
+    }
+    KVSSetKVSValueThres(impl->immutable_db_options_.dcpmm_kvs_value_thres);
+    KVSSetCompressKnob(impl->immutable_db_options_.dcpmm_compress_value);
+  }
+  }
+#endif
   impl->mutex_.Unlock();
   sv_context.Clean();
   if (s.ok()) {
