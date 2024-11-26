@@ -100,7 +100,7 @@
 #include "util/mutexlock.h"
 #include "util/stop_watch.h"
 #include "util/string_util.h"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 uint64_t max_l0_files{0};
 uint64_t current_l0_files{0};

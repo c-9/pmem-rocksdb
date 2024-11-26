@@ -22,7 +22,7 @@
 #include "table/block_based/block_based_table_factory.h"
 #include "test_util/sync_point.h"
 #include "util/rate_limiter.h"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 namespace ROCKSDB_NAMESPACE {
 Options SanitizeOptions(const std::string& dbname, const Options& src) {

@@ -61,7 +61,7 @@
 #include "util/duplicate_detector.h"
 #include "util/string_util.h"
 #include "iostream"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 namespace ROCKSDB_NAMESPACE {
 

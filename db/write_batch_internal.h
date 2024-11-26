@@ -17,7 +17,7 @@
 #include "rocksdb/types.h"
 #include "rocksdb/write_batch.h"
 #include "util/autovector.h"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 namespace ROCKSDB_NAMESPACE {
 

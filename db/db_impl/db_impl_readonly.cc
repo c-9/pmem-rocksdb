@@ -10,7 +10,7 @@
 #include "db/db_iter.h"
 #include "db/merge_context.h"
 #include "monitoring/perf_context_imp.h"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 namespace ROCKSDB_NAMESPACE {
 

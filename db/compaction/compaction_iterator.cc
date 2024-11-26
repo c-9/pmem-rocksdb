@@ -13,7 +13,7 @@
 #include "test_util/sync_point.h"
 
 #ifdef ON_DCPMM
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 #endif
 
 #define DEFINITELY_IN_SNAPSHOT(seq, snapshot)                       \

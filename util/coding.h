@@ -21,7 +21,7 @@
 
 #include "rocksdb/write_batch.h"
 #include "port/port.h"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 // Some processors does not allow unaligned access to memory
 #if defined(__sparc)

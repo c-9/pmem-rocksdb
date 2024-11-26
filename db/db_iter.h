@@ -19,7 +19,7 @@
 #include "rocksdb/iterator.h"
 #include "table/iterator_wrapper.h"
 #include "util/autovector.h"
-#include "dcpmm/kvs_dcpmm.h"
+#include "rocksdb/kvs_dcpmm.h"
 
 namespace ROCKSDB_NAMESPACE {
 
