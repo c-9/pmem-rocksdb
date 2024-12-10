@@ -166,9 +166,9 @@ bool KVSEncodeValue(const Slice& value, bool compress,
     memcpy((char*)buf + sizeof(ref->hdr), value.data(), value.size());
     pmemobj_persist(pools_[ref->pool_index].pool, buf, value.size() + sizeof(ref->hdr));
     pmemobj_publish(pools_[ref->pool_index].pool, (pobj_action*)&pact, 1);
-#ifndef NDEBUG
-    printf("[PMEM] uncompressed value size %lu\n", value.size());
-#endif
+// #ifndef NDEBUG
+//     printf("[PMEM] uncompressed value size %lu\n", value.size());
+// #endif
   } else {
     // So far, just support to use snappy for value compression.
 #ifdef SNAPPY
@@ -200,9 +200,9 @@ bool KVSEncodeValue(const Slice& value, bool compress,
     pmemobj_persist(pools_[ref->pool_index].pool, buf, outsize + sizeof(ref->hdr));
     pmemobj_publish(pools_[ref->pool_index].pool, (pobj_action*)&pact, 1);
     delete[] compressed;
-#ifndef NDEBUG
-    printf("[PMEM] compressed value size %lu\n", outsize);
-#endif
+// #ifndef NDEBUG
+//     printf("[PMEM] compressed value size %lu\n", outsize);
+// #endif
   }
 
   return true;
