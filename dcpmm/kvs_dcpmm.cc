@@ -20,6 +20,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include "util/compression.h"
 
@@ -71,8 +72,17 @@ int KVSOpen(const char* path, size_t size, size_t pool_count) {
     PMEMoid root;
     KVSRoot *rootp;
     auto* pool = pmemobj_create(pool_path.data(), "store_rocksdb_value",
-                                        pool_size, 0666);
+                               pool_size, 0666);
     if (pool) {
+#ifdef POOL_POPULATE
+      if (!PopulatePool(pool, pool_size)) {
+        fprintf(stderr, "Failed to populate pool %zu\n", i);
+        pmemobj_close(pool);
+        delete[] pools_;
+        pools_ = nullptr;
+        return -ENOMEM;
+      }
+#endif
       root = pmemobj_root(pool, sizeof(struct KVSRoot));
       rootp = (struct KVSRoot*)pmemobj_direct(root);
       rootp->size = pool_size;
@@ -96,6 +106,87 @@ int KVSOpen(const char* path, size_t size, size_t pool_count) {
   // hard code it as 1/10 of total dcpmm size.
   dcpmm_avail_size_min_ = size / 10;
   return 0;
+}
+
+bool PopulatePool(PMEMobjpool* pool, size_t pool_size) {
+  const size_t page_size = sysconf(_SC_PAGESIZE);
+  char* base_addr = (char*)pmemobj_direct(pmemobj_root(pool, 1));
+  
+  // Multi-threaded population
+  const int num_threads = std::thread::hardware_concurrency();
+  std::vector<std::thread> threads;
+  
+  size_t chunk_size = pool_size / num_threads;
+  chunk_size = (chunk_size + page_size - 1) & ~(page_size - 1); // Align to page size
+
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back([=]() {
+      char* start = base_addr + (i * chunk_size);
+      size_t len = (i == num_threads - 1) ? 
+                   pool_size - (i * chunk_size) : 
+                   chunk_size;
+
+      for (size_t offset = 0; offset < len; offset += page_size) {
+        // Use non-temporal stores for better performance
+        _mm512_stream_si512(
+            reinterpret_cast<__m512i*>(start + offset),
+            _mm512_set1_epi64(0ULL));
+      }
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+  
+  _mm_mfence();
+
+  // Verify the population
+  if (!VerifyPoolPopulation(base_addr, pool_size)) {
+    fprintf(stderr, "Pool population verification failed\n");
+    return false;
+  }
+  return true;
+}
+
+bool VerifyPoolPopulation(char* base_addr, size_t pool_size) {
+  const size_t page_size = sysconf(_SC_PAGESIZE);
+  size_t num_pages = (pool_size + page_size - 1) / page_size;
+  std::vector<unsigned char> vec(num_pages);
+
+  if (mincore(base_addr, pool_size, vec.data()) != 0) {
+    fprintf(stderr, "mincore failed: %s\n", strerror(errno));
+    return false;
+  }
+
+  size_t resident_pages = 0;
+  std::vector<size_t> missing_pages;
+  
+  for (size_t i = 0; i < num_pages; i++) {
+    if (vec[i] & 1) {
+      resident_pages++;
+    } else {
+      // Keep track of first few missing pages for debugging
+      if (missing_pages.size() < 10) {
+        missing_pages.push_back(i);
+      }
+    }
+  }
+
+  if (resident_pages != num_pages) {
+    fprintf(stderr, "Pool population incomplete: %zu/%zu pages resident\n",
+            resident_pages, num_pages);
+    if (!missing_pages.empty()) {
+      fprintf(stderr, "First few missing pages: ");
+      for (size_t page : missing_pages) {
+        fprintf(stderr, "%zu ", page);
+      }
+      fprintf(stderr, "\n");
+    }
+    return false;
+  }
+
+  return true;
 }
 
 void KVSClose() {

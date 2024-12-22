@@ -6,7 +6,9 @@
 //
 
 #pragma once
-
+#include <immintrin.h>
+#include <x86intrin.h>
+#include <sys/mman.h>
 #include <mutex>
 #include <string>
 #include <vector>

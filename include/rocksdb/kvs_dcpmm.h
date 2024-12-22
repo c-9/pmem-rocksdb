@@ -10,6 +10,9 @@
 #pragma once
 
 #ifdef ON_DCPMM
+#include <immintrin.h>
+#include <x86intrin.h>
+#include <sys/mman.h>
 #include <functional>
 #include <libpmemobj.h>
 
@@ -83,5 +86,9 @@ extern int KVSPublish(struct pobj_action** pact_array, size_t actvcnt);
 
 // Return the value encoding type.
 enum ValueEncoding KVSGetEncoding(const void *ptr);
+
+extern bool PopulatePool(PMEMobjpool* pool, size_t pool_size);
+
+extern bool VerifyPoolPopulation(char* base_addr, size_t pool_size);
 }  // namespace rocksdb
 #endif

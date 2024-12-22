@@ -193,6 +193,14 @@ class DCPMMWritableFile : public WritableFile {
                                  .append("' failed: ")
                                  .append(strerror(errno)));
     }
+#ifdef POOL_POPULATE
+    // Add population here
+    s = PopulateFile(fd, init_size);
+    if (!s.ok()) {
+      close(fd);
+      return s;
+    }
+#endif
     return MapFile(fd, init_size, size_addition, p_file);
   }
 
@@ -386,6 +394,46 @@ class DCPMMWritableFile : public WritableFile {
   void* map_base;        // mmap()-ed area
   size_t map_length;     // mmap()-ed length
   uint8_t* buffer;       // the base address of buffer to write
+
+  static Status PopulateFile(int fd, size_t file_size) {
+    const size_t page_size = sysconf(_SC_PAGESIZE);
+    // Map the entire file
+    void* base = mmap(nullptr, file_size, PROT_WRITE, MMAP_FLAGS, fd, 0);
+    if (base == MAP_FAILED) {
+      return Status::IOError("Failed to mmap for population");
+    }
+
+    // Multi-threaded population
+    const int num_threads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+    
+    size_t chunk_size = file_size / num_threads;
+    chunk_size = (chunk_size + page_size - 1) & ~(page_size - 1); // Align to page size
+
+    for (int i = 0; i < num_threads; i++) {
+      threads.emplace_back([=]() {
+        char* start = (char*)base + (i * chunk_size);
+        size_t len = (i == num_threads - 1) ? 
+                     file_size - (i * chunk_size) : 
+                     chunk_size;
+
+        for (size_t offset = 0; offset < len; offset += page_size) {
+          // Use non-temporal stores for better performance
+          _mm512_stream_si512(
+              reinterpret_cast<__m512i*>(start + offset),
+              _mm512_set1_epi64(0ULL));
+        }
+      });
+    }
+
+    for (auto& t : threads) {
+      t.join();
+    }
+
+    _mm_mfence();
+    munmap(base, file_size);
+    return Status::OK();
+  }
 };
 
 class DCPMMSequentialFile : public SequentialFile {
@@ -572,6 +620,30 @@ Status DCPMMEnv::NewSequentialFile(const std::string& fname,
 Env* NewDCPMMEnv(const DCPMMEnvOptions& options, Env* base_env) {
   std::cerr << "new dcpmm env!" << std::endl;
   return new DCPMMEnv(options, base_env ? base_env : rocksdb::Env::Default());
+}
+
+static bool VerifyPopulation(int fd, size_t file_size) {
+  const size_t page_size = sysconf(_SC_PAGESIZE);
+  size_t num_pages = (file_size + page_size - 1) / page_size;
+  std::vector<unsigned char> vec(num_pages);
+
+  void* base = mmap(nullptr, file_size, PROT_READ, MAP_SHARED, fd, 0);
+  if (base == MAP_FAILED) {
+    return false;
+  }
+
+  if (mincore(base, file_size, vec.data()) != 0) {
+    munmap(base, file_size);
+    return false;
+  }
+
+  size_t resident_pages = 0;
+  for (size_t i = 0; i < num_pages; i++) {
+    if (vec[i] & 1) resident_pages++;
+  }
+
+  munmap(base, file_size);
+  return resident_pages == num_pages;
 }
 
 }  // namespace rocksdb
